@@ -9,6 +9,9 @@ const _createWaterMaterial = () => {
             tDepth: {
                 value: null
             },
+            tDudv: {
+                value: null
+            },
             cameraNear: {
                 value: 0
             },
@@ -49,6 +52,7 @@ const _createWaterMaterial = () => {
 
             uniform float uTime;
             uniform sampler2D tDepth;
+            uniform sampler2D tDudv;
             uniform sampler2D foamTexture;
             uniform float cameraNear;
             uniform float cameraFar;
@@ -79,28 +83,38 @@ const _createWaterMaterial = () => {
                 vec4 waterColor = vec4(0.140, 0.294, 0.560, 1.0);
                 vec4 col = sceneDepth * shoreColor + (1. - sceneDepth) * waterColor;
 
-                float foamCutout = 0.5;
-                float foamTDepthScale = 0.9;
-                float foamTDepthFalloff = 0.5;
-                float foamAmount = 0.5;
-                float foamTDepth = getDepthFade(fragmentLinearEyeDepth, linearEyeDepth, foamTDepthScale, foamTDepthFalloff);
-                float foamUvX = foamTDepth * foamAmount + uTime * 0.05;
-                float foamUvY = vPos.z * 0.05;
-                vec4 foamT = texture2D(foamTexture, vec2(foamUvX, foamUvY));
-                foamT = cutout((foamT * foamTDepth).r, foamCutout);
+                
+                // float foamCutout = 0.3;
+                // float foamTDepthScale = 0.9;
+                // float foamTDepthFalloff = 0.5;
+                // float foamAmount = 0.8;
+                // float foamTDepth = getDepthFade(fragmentLinearEyeDepth, linearEyeDepth, foamTDepthScale, foamTDepthFalloff);
+                // float foamUvX = foamTDepth * foamAmount - uTime * 0.15;
+                // float foamUvY = vPos.z * 0.05;
+                // vec4 foamT = texture2D(foamTexture, vec2(foamUvX, foamUvY));
+                // foamT = cutout((foamT * foamTDepth).r, foamCutout);
 
                 vec4 foamColor = vec4(1.0, 1.0, 1.0, 1.0);
                 float foamDepth = getDepthFade(fragmentLinearEyeDepth, linearEyeDepth, 1.0, 1.0);
                 float foamShoreWidth = 0.9;
-                vec4 foamCutOut = saturate(cutout(foamDepth, foamShoreWidth) + foamT);
+                //vec4 foamCutOut = saturate(cutout(foamDepth, foamShoreWidth) + foamT);
+                vec4 foamCutOut = saturate(cutout(foamDepth, foamShoreWidth));
                 vec4 foam = foamCutOut * foamColor;
-
-                
                 vec4 col2 = col * (1. - foamCutOut) + foam;
 
 
                 gl_FragColor = vec4(col2);
-
+    
+                float diff = saturate( fragmentLinearEyeDepth - linearEyeDepth );
+                if(diff > 0.){
+                    vec2 channelA = texture2D( tDudv, vec2(0.25 * vPos.x + uTime * 0.04, 0.5 * vPos.z - uTime * 0.03) ).rg;
+                    vec2 channelB = texture2D( tDudv, vec2(0.5 * vPos.x - uTime * 0.05, 0.35 * vPos.z + uTime * 0.04) ).rg;
+                    vec2 displacement = (channelA + channelB) * 0.5;
+                    displacement = ( ( displacement * 2.0 ) - 1.0 ) * 1.0;
+                    diff += displacement.x;
+                    gl_FragColor = mix( vec4(1.0, 1.0, 1.0, gl_FragColor.a), gl_FragColor, step( 0.1, diff ) );
+                }
+                
                 ${THREE.ShaderChunk.logdepthbuf_fragment}
             }
         `,

@@ -382,8 +382,12 @@ export class WaterMesh extends BufferedMesh {
     this.material.uniforms.uTime.value = performance.now() / 1000;
   }
   renderDepthTexture(){
+    const localPlayer = useLocalPlayer();
     renderer.setRenderTarget(renderTarget);
     renderer.clear();
+    if (localPlayer.avatar) {
+      localPlayer.avatar.app.visible = false;
+    }
     this.visible = false;
     scene.overrideMaterial = depthMaterial;
 
@@ -391,6 +395,9 @@ export class WaterMesh extends BufferedMesh {
     renderer.setRenderTarget(null);
 
     scene.overrideMaterial = null;
+    if (localPlayer.avatar) {
+      localPlayer.avatar.app.visible = true;
+    }
     this.visible = true;
   }
   setMaterialDepthTexture() {
@@ -403,7 +410,10 @@ export class WaterMesh extends BufferedMesh {
     const textureLoader = new THREE.TextureLoader();
     const foamTexture = textureLoader.load(`${baseUrl}../water-particle/assets/textures/wave2.jpeg`);
     foamTexture.wrapS = foamTexture.wrapT = THREE.RepeatWrapping;
+    const dudvMap2 = textureLoader.load(`${baseUrl}../water-particle/assets/textures/dudvMap2.png`);
+    dudvMap2.wrapS = dudvMap2.wrapT = THREE.RepeatWrapping;
     this.material.uniforms.foamTexture.value = foamTexture;
+    this.material.uniforms.tDudv.value = dudvMap2;
 
     if (renderSettings.findRenderSettings(scene)) {
       for (const pass of renderSettings.findRenderSettings(scene).passes) {
